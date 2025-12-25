@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive QR Code Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter Font and Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom spinner keyframes */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            border-top-color: #3b82f6; /* Blue-500 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+    <!-- Load qrcode.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Card -->
+    <div class="w-full max-w-lg bg-white shadow-2xl rounded-2xl p-6 md:p-8 space-y-6">
+
+        <h1 class="text-3xl font-extrabold text-gray-900 text-center">
+            🔗 Pro QR Code Studio
+        </h1>
+        <p class="text-center text-gray-600">
+            Enter any URL to generate and download a scannable QR code.
+        </p>
+
+        <!-- Input Section -->
+        <div>
+            <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-2">URL to Convert</label>
+            <input type="url" id="urlInput" placeholder="e.g., https://google.com"
+                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-lg transition duration-150 ease-in-out"
+                   value="https://www.google.com">
+            <p id="errorMsg" class="text-red-600 text-sm mt-1 h-5"></p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4">
+            <button id="generateBtn" onclick="generateQrCode(true)"
+                    class="w-full sm:w-1/2 bg-blue-600 text-white font-semibold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-[1.01] disabled:bg-blue-400 disabled:shadow-none">
+                Generate QR Code
+            </button>
+            <button id="downloadBtn" onclick="downloadQrCode()"
+                    class="w-full sm:w-1/2 bg-green-500 text-white font-semibold py-3 rounded-xl shadow-lg hover:bg-green-600 transition duration-300 ease-in-out disabled:bg-gray-400 disabled:shadow-none"
+                    disabled>
+                Download PNG
+            </button>
+        </div>
+
+        <!-- QR Code Output Area & Loading Indicator -->
+        <div class="flex justify-center items-center p-4 border border-gray-200 rounded-xl bg-gray-50 min-h-[288px]">
+            
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="hidden flex-col items-center justify-center space-y-4 p-8">
+                <div class="spinner w-12 h-12 border-4"></div>
+                <p class="text-lg font-medium text-blue-600">Processing complex algorithms...</p>
+                <p class="text-sm text-gray-500">Please wait 3 seconds for quality assurance.</p>
+            </div>
+
+            <!-- QR Code Container -->
+            <div id="qrcode" class="p-2 bg-white rounded-lg shadow-inner flex justify-center items-center">
+                <!-- The QR code canvas will be generated here -->
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const urlInput = document.getElementById('urlInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const qrcodeDiv = document.getElementById('qrcode');
+        const errorMsg = document.getElementById('errorMsg');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // This function handles the delay, generation, and UI update
+        async function generateQrCode(withDelay = false) {
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                errorMsg.textContent = "Please enter a URL to generate a QR code.";
+                return;
+            }
+
+            // Simple URL validation
+            // Note: This regex is flexible to allow common formats but not overly strict
+            const urlRegex = /^(https?:\/\/|www\.)[^\s/$.?#].[^\s]*$/i;
+            if (!urlRegex.test(url) && !url.startsWith("http")) {
+                 errorMsg.textContent = "URL is invalid. Adding 'https://' prefix.";
+                 urlInput.value = `https://${url}`;
+                 // Re-run generation with the corrected URL immediately
+                 await generateQrCode(withDelay);
+                 return;
+            }
+            
+            errorMsg.textContent = '';
+            
+            // 1. Disable buttons and prepare UI
+            generateBtn.disabled = true;
+            downloadBtn.disabled = true;
+            qrcodeDiv.style.display = 'none';
+            qrcodeDiv.innerHTML = ''; // Clear existing code
+            
+            if (withDelay) {
+                // 2. Show loading and enforce 3-second delay
+                loadingIndicator.style.display = 'flex';
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+            // 3. QR Code Generation Logic
+            try {
+                // Initialize QRCode.js
+                // qrcode.js replaces the content of the target div with the canvas/table
+                new QRCode(qrcodeDiv, {
+                    text: url,
+                    width: 256,
+                    height: 256,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H // High error correction
+                });
+
+                // 4. Update UI after successful generation
+                loadingIndicator.style.display = 'none';
+                qrcodeDiv.style.display = 'flex';
+                downloadBtn.disabled = false;
+                errorMsg.textContent = 'QR Code successfully generated and ready for download!';
+
+            } catch (error) {
+                errorMsg.textContent = "Failed to generate QR code. Check console for details.";
+                console.error("QR Code Generation Error:", error);
+                loadingIndicator.style.display = 'none';
+                qrcodeDiv.style.display = 'flex';
+                qrcodeDiv.innerHTML = '<p class="text-red-500">Error generating code.</p>';
+            }
+            
+            generateBtn.disabled = false;
+        }
+
+        /**
+         * Finds the generated canvas and triggers a download of the PNG image.
+         */
+        function downloadQrCode() {
+            // qrcode.js typically puts the canvas as the first child
+            const canvas = qrcodeDiv.querySelector('canvas');
+            
+            if (!canvas) {
+                errorMsg.textContent = "No QR Code found to download. Please generate one first.";
+                return;
+            }
+
+            try {
+                // Convert canvas content to a PNG data URL
+                const dataURL = canvas.toDataURL('image/png');
+                
+                // Create a temporary link element
+                const a = document.createElement('a');
+                a.href = dataURL;
+                // Suggest a filename
+                const filename = urlInput.value.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+                a.download = `qrcode_${filename || 'link'}.png`;
+
+                // Programmatically click the link to trigger the download
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                errorMsg.textContent = 'Download started!';
+
+            } catch (error) {
+                 errorMsg.textContent = "Download failed. Check browser permissions.";
+                 console.error("Download Error:", error);
+            }
+        }
+
+        // Initial setup on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial generation for the default value without artificial delay
+            generateQrCode(false); 
+        });
+
+    </script>
+</body>
+</html>
+
+
